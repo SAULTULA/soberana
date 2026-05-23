@@ -20,20 +20,17 @@ function App() {
   const [cloudSession, setCloudSession] = useState('checking');
 
   useEffect(() => {
-    // 1. Verificar sesión Cloud (SaaS)
-    if (window.electronAPI) {
-      setCloudSession('bypassed'); // Desktop app: no pedimos login de Nube
-    } else {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setCloudSession(session ? session : null);
-      });
-      
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setCloudSession(session ? session : null);
-      });
+    // 1. Verificar sesión Cloud (SaaS) - TANTO EN WEB COMO EN ESCRITORIO
+    // Esto es crucial para que el .exe sepa a qué comercio (tenant_id) pertenece
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCloudSession(session ? session : null);
+    });
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCloudSession(session ? session : null);
+    });
 
-      return () => subscription.unsubscribe();
-    }
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {

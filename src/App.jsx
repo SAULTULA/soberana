@@ -49,7 +49,14 @@ function App() {
     };
     if (cloudSession !== 'checking' && cloudSession !== null) {
       loadConfig();
+      DatabaseService.subscribeToRealtime();
     }
+
+    return () => {
+      if (cloudSession !== 'checking' && cloudSession !== null) {
+        DatabaseService.unsubscribeFromRealtime();
+      }
+    };
   }, [cloudSession]);
 
   const handleCloudLogin = async (session) => {
@@ -62,7 +69,16 @@ function App() {
   };
 
   if (cloudSession === 'checking') {
-    return <div style={{height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#111418', color: '#00e5ff'}}>Cargando Sistema...</div>;
+    return (
+      <div className="loader-container">
+        <div className="loader-content">
+          <img src="./soberana.png" alt="Soberana ERP" className="loader-logo" />
+          <div className="loader-spinner"></div>
+          <p className="loader-text">CARGANDO SISTEMA</p>
+        </div>
+        <p className="loader-copyright">ksmservicios copyright@2026</p>
+      </div>
+    );
   }
 
   // Si estamos en web y no hay sesión, obligamos a loguearse como Administrador de Nube

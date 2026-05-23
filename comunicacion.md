@@ -96,3 +96,14 @@ debe tener botones para administrar stock y carga de productos con precios de co
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
+
+
+git add .
+git commit -m "Añadida integración Supabase, RBAC, Sync Engine y reglas de seguridad"
+git push
+Al hacer eso, Vercel va a compilar el Panel Web automáticamente para que accedas desde cualquier lado, y Supabase va a correr el archivo de migración para dejar tu base de datos lista.
+
+¿Vamos por el toque final? (App de Escritorio + Licencias)
+El último paso que nos queda en el Roadmap es empaquetar todo esto como un programa instalable de Escritorio (.exe) e inyectarle el validador de KSMLicencias para que verifique con Telegram y el Hardware ID antes de abrir.
+
+Dime si ya hiciste el push a GitHub y arrancamos enseguida con la instalación de Electron.

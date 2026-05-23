@@ -1,5 +1,28 @@
 import localforage from 'localforage';
 import { createClient } from '@supabase/supabase-js';
+import CryptoJS from 'crypto-js';
+
+const ENCRYPTION_KEY = import.meta.env.VITE_ENCRYPTION_KEY || 'Soberana_Offline_Secret_Key_2026';
+
+function encryptData(data) {
+  const jsonStr = JSON.stringify(data);
+  return CryptoJS.AES.encrypt(jsonStr, ENCRYPTION_KEY).toString();
+}
+
+function decryptData(data) {
+  try {
+    // Si no es string, es data antigua sin cifrar (localforage guarda objetos)
+    if (typeof data !== 'string') return data;
+    
+    const bytes = CryptoJS.AES.decrypt(data, ENCRYPTION_KEY);
+    const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+    
+    if (!decryptedStr) return data; // Fallback
+    return JSON.parse(decryptedStr);
+  } catch (e) {
+    return data; // Fallback si era un string pero no AES
+  }
+}
 
 // Configuración de LocalForage (Base de datos local rápida)
 localforage.config({
@@ -15,17 +38,25 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'tu-anon-key';
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
+ * Eventos de la Base de Datos para notificar a React
+ */
+export const dbEvents = new EventTarget();
+
+/**
  * Servicio de Base de Datos Dual
  */
 export const DatabaseService = {
+  _realtimeChannel: null,
+
   // 1. Escribir en base local y encolar para la nube
   async saveRecord(collection, record) {
     try {
       const dataKey = `${collection}_${record.id || Date.now()}`;
       
-      // Guardar en local primero (Alta velocidad)
-      await localforage.setItem(dataKey, record);
-      console.log(`[Local DB] Guardado exitoso: ${dataKey}`);
+      // Guardar en local cifrado (Alta velocidad y seguridad)
+      const encryptedRecord = encryptData(record);
+      await localforage.setItem(dataKey, encryptedRecord);
+      console.log(`[Local DB] Guardado cifrado exitoso: ${dataKey}`);
 
       // Intentar enviar a Supabase (Segundo plano)
       this.syncToCloud(collection, record).catch(err => {
@@ -65,6 +96,59 @@ export const DatabaseService = {
     console.log(`[Nube] Sincronizado ${collection} con éxito.`);
   },
 
+  // 1.5. Suscripción en Tiempo Real
+  async subscribeToRealtime() {
+    const { data: session } = await supabase.auth.getSession();
+    if (!session?.session) {
+      console.log('[Realtime] No hay sesión, omitiendo suscripción.');
+      return;
+    }
+
+    if (this._realtimeChannel) return; // Ya está suscrito
+
+    console.log('[Realtime] Iniciando suscripción a cambios en la nube...');
+    this._realtimeChannel = supabase
+      .channel('app_data_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_data' },
+        async (payload) => {
+          console.log('[Realtime] Cambio detectado:', payload);
+          const { eventType, new: newRecord, old: oldRecord } = payload;
+          
+          if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          const dataKey = `${newRecord.collection}_${newRecord.id}`;
+          const encryptedRecord = encryptData(newRecord.data);
+          await localforage.setItem(dataKey, encryptedRecord);
+            
+            // Notificar a la UI
+            dbEvents.dispatchEvent(new CustomEvent('onDataChange', { 
+              detail: { collection: newRecord.collection, type: eventType, data: newRecord.data }
+            }));
+          } else if (eventType === 'DELETE') {
+            const dataKey = `${oldRecord.collection}_${oldRecord.id}`;
+            await localforage.removeItem(dataKey);
+            
+            // Notificar a la UI
+            dbEvents.dispatchEvent(new CustomEvent('onDataChange', { 
+              detail: { collection: oldRecord.collection, type: eventType, id: oldRecord.id }
+            }));
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('[Realtime] Estado:', status);
+      });
+  },
+  
+  unsubscribeFromRealtime() {
+    if (this._realtimeChannel) {
+      supabase.removeChannel(this._realtimeChannel);
+      this._realtimeChannel = null;
+      console.log('[Realtime] Desuscrito de cambios.');
+    }
+  },
+
   // Eliminar un registro
   async deleteRecord(collection, id) {
     try {
@@ -91,7 +175,9 @@ export const DatabaseService = {
       const records = [];
       for (const key of collectionKeys) {
         const item = await localforage.getItem(key);
-        records.push(item);
+        if (item) {
+          records.push(decryptData(item));
+        }
       }
       return records;
     } catch (error) {
@@ -116,9 +202,10 @@ export const DatabaseService = {
       await localforage.clear();
       for (const row of data) {
         const dataKey = `${row.collection}_${row.id}`;
-        await localforage.setItem(dataKey, row.data);
+        const encryptedRecord = encryptData(row.data);
+        await localforage.setItem(dataKey, encryptedRecord);
       }
-      console.log('[Nube] Descarga y restauración local exitosa.');
+      console.log('[Nube] Descarga y restauración cifrada exitosa.');
       return true;
     } catch (err) {
       console.error('[Nube] Error descargando base de datos:', err);
@@ -133,7 +220,8 @@ export const DatabaseService = {
       const backupData = {};
       
       for (const key of keys) {
-        backupData[key] = await localforage.getItem(key);
+        const item = await localforage.getItem(key);
+        backupData[key] = decryptData(item);
       }
       
       const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -161,7 +249,8 @@ export const DatabaseService = {
       await localforage.clear(); // Limpiar antes de restaurar
       
       for (const [key, value] of Object.entries(backupData)) {
-        await localforage.setItem(key, value);
+        const encryptedRecord = encryptData(value);
+        await localforage.setItem(key, encryptedRecord);
       }
       
       console.log('[Backup] Restauración completa.');

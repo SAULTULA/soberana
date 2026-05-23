@@ -1,5 +1,16 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
+const { machineIdSync } = require('node-machine-id')
+const os = require('os')
+
+// Manejador IPC para obtener el HWID de forma segura en el proceso Main (Node.js)
+ipcMain.handle('get-hwid', () => {
+  try {
+    return machineIdSync(true)
+  } catch (e) {
+    return `${os.hostname()}-${os.platform()}`
+  }
+})
 
 // Mantener una referencia global del objeto window
 let mainWindow

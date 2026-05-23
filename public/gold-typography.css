@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&display=swap');
+
+:root {
+  --font-lujo: 'Cinzel', serif;
+  --font-cuerpo: 'Cormorant Garamond', serif;
+  --oro-claro:  #ffe066;
+  --oro-medio:  #d4a017;
+  --oro-oscuro: #b8860b;
+  --oro-brillo: #fff8e1;
+}
+
+.texto-dorado {
+  font-family: var(--font-lujo);
+  background: linear-gradient(135deg, #fff8e1 0%, #f5c842 20%, #d4a017 40%, #f7d060 60%, #b8860b 80%, #ffe066 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.texto-dorado-xl {
+  font-family: var(--font-lujo);
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fff8e1 0%, #f5c842 15%, #d4a017 30%, #f7d060 45%, #b8860b 60%, #e8b923 75%, #7a5c00 90%, #c8960c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 100% 200%;
+  animation: gold-shimmer 4s ease-in-out infinite;
+}
+
+.texto-dorado-italic {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.4rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  background: linear-gradient(90deg, #b8922a, #ffe066, #d4a017, #ffe8a0, #b8922a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 300% 100%;
+  animation: gold-sweep 5s ease-in-out infinite;
+}
+
+.divider-dorado {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+.divider-dorado::before,
+.divider-dorado::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: linear-gradient(90deg, transparent, #c8960c, transparent);
+}
+
+@keyframes gold-shimmer {
+  0%, 100% { background-position: 0% 0%; }
+  50%       { background-position: 0% 100%; }
+}
+
+@keyframes gold-sweep {
+  0%, 100% { background-position: 0% 0%; }
+  50%       { background-position: 100% 0%; }
+}

@@ -1,0 +1,99 @@
+.hub {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--spacing-xl);
+}
+
+.hub__header {
+  text-align: center;
+  margin-bottom: var(--spacing-2xl);
+}
+
+.hub__title {
+  margin: 0;
+  -webkit-text-stroke: 1px #fff8e1; /* Borde claro para separar el volumen */
+  filter: drop-shadow(1px 1px 0px var(--oro-oscuro, #b8860b)) 
+          drop-shadow(2px 2px 0px var(--oro-oscuro, #b8860b)) 
+          drop-shadow(3px 3px 0px var(--oro-oscuro, #b8860b))
+          drop-shadow(5px 5px 10px rgba(0,0,0,0.8));
+}
+
+.hub__subtitle {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  margin-top: var(--spacing-sm);
+}
+
+.hub__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--spacing-2xl);
+  justify-items: center;
+  align-content: start;
+  flex: 1;
+}
+
+.hub__btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: 320px;
+  height: 200px;
+  border-radius: var(--radius-xl);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hub__btnImg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: all 0.3s ease;
+}
+
+.hub__btnLabel {
+  font-size: var(--font-size-lg);
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.hub__btn:hover {
+  transform: scale(1.05);
+}
+
+.hub__btn:hover .hub__btnImg {
+  opacity: 0.5;
+  filter: blur(3px);
+}
+
+.hub__tooltip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  background: rgba(25, 27, 32, 0.95);
+  padding: 15px 30px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--oro-claro);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 224, 102, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.hub__btn:hover .hub__tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
+}

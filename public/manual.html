@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Manual de Uso - Editor</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      padding: 80px 20px 20px; /* Espacio para la barra flotante */
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fdfdfd;
+    }
+    .toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(30, 41, 59, 0.9);
+      backdrop-filter: blur(10px);
+      padding: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 1000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .toolbar button {
+      padding: 8px 16px;
+      background: #b8860b;
+      color: #fff;
+      border: 1px solid #ffdf00;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    .toolbar button:hover { background: #ffdf00; color: #000; }
+    #editor {
+      padding: 20px;
+      border: 2px dashed transparent;
+      min-height: 500px;
+      transition: border 0.3s;
+    }
+    #editor.editing { border: 2px dashed #b8860b; background: #fffdf5; }
+    h2 { color: #b8860b; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    h3 { color: #444; margin-top: 30px; }
+    img { max-width: 100%; border-radius: 8px; margin: 15px 0; }
+    
+    @media print {
+      body { padding-top: 0; background: white; }
+      .toolbar { display: none !important; }
+      #editor { border: none !important; background: transparent !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar no-print">
+    <button id="toggleEditBtn" onclick="toggleEdit()">✏️ Activar Edición</button>
+    <button onclick="insertImage()">🖼️ Insertar Imagen</button>
+    <button onclick="saveHtml()">💾 Guardar Archivo (HTML)</button>
+    <button onclick="window.print()">🖨️ Imprimir a PDF</button>
+  </div>
+
+  <div id="editor">
+    <h2>Manual de Operaciones - Soberana ERP/POS</h2>
+    <p>Este sistema está diseñado para operar tu comercio con máxima velocidad, control total de inventario y trazabilidad financiera. A continuación se detalla el paso a paso de cada botón y proceso.</p>
+    
+    <hr/>
+    
+    <h3>1. Punto de Venta (POS) - ¿Cómo cargar una Venta?</h3>
+    <p>El POS es la pantalla donde atenderás al cliente. Se divide en dos partes: el buscador izquierdo y la calculadora derecha.</p>
+    
+    <h4>Proceso de Carga Normal:</h4>
+    <ol>
+      <li>Ubica el recuadro "Buscar Producto". Tipea el nombre o usa el lector de código de barras.</li>
+      <li>Escribe la cantidad a vender y presiona el botón dorado <strong>"Añadir al Ticket"</strong>. El artículo bajará al ticket en pantalla.</li>
+    </ol>
+    
+    <h4>Uso de la Calculadora (Botón "Agregar Varios"):</h4>
+    <p>Si el cliente lleva artículos sueltos que no están en inventario (ej: $500 de pan), tipealo en el gran teclado numérico de la derecha y presiona el botón rojo inferior <strong>"Agregar al Ticket como Varios"</strong>. Esto suma directo al total sin afectar inventario.</p>
+
+    <h4>Finalizar y Cobrar:</h4>
+    <p>Una vez que el ticket está listo, tienes dos botones de pago:</p>
+    <ul>
+      <li><strong>Botón Verde "💰 Cobrar Efectivo":</strong> Descuenta el stock de los productos. Inmediatamente registra el monto total como un "Ingreso" en el Libro Diario (tu caja).</li>
+      <li><strong>Botón Azul "📒 Fiar a Cuenta":</strong> Descuenta el stock igual que el efectivo, pero <strong>NO</strong> suma el dinero a la caja. Te pedirá que elijas a un Cliente. La venta quedará guardada y la deuda de ese cliente aumentará.</li>
+    </ul>
+
+    <hr/>
+
+    <h3>2. Clientes y CRM - ¿Cómo cobrar algo que fié?</h3>
+    <p>Cuando un cliente al que le fiaste mercadería viene a pagarte (ya sea el total o una seña), debes seguir estos pasos para que el dinero ingrese a la caja.</p>
+    <ol>
+      <li>Desde el panel principal (Hub), entra al módulo <strong>"Clientes & CRM"</strong>.</li>
+      <li>Verás la lista de todos tus clientes y cuánto te deben en rojo.</li>
+      <li>Ubica al cliente que vino a pagar y fíjate en el recuadro "Abono $".</li>
+      <li>Escribe la cantidad de billetes físicos que el cliente te está entregando (por ejemplo, si debía $10,000 y te trae $5,000, escribes 5000).</li>
+      <li>Presiona el botón verde <strong>"Abonar / Pagar"</strong>.</li>
+    </ol>
+    <p><strong>¿Qué hace este botón internamente?</strong> Reduce la deuda del cliente y <em>automáticamente</em> genera un registro de "Ingreso por Pago de Deuda" en tu Libro Diario, asegurando que tu balance de caja en efectivo siempre sea perfecto.</p>
+
+    <hr/>
+
+    <h3>3. Historial de Tickets - ¿Cómo anular una venta?</h3>
+    <p>Si te equivocaste al cobrar o el cliente devolvió todo, ve al <strong>Historial de Tickets</strong>.</p>
+    <ul>
+      <li>Haz clic en el botón <strong>"Ver"</strong> del ticket correspondiente.</li>
+      <li>En la parte inferior del ticket detallado, verás el botón rojo <strong>"Anular Ticket"</strong>.</li>
+      <li><strong>¿Qué hace?:</strong> 1) Regresa físicamente las unidades al inventario. 2) Registra un "Egreso" en el Libro Diario (porque técnicamente le estás devolviendo la plata al cliente, sacándola de tu caja).</li>
+    </ul>
+
+    <hr/>
+
+    <h3>4. Libro Diario y Caja - Control de Egresos</h3>
+    <p>Como las ventas (Ingresos) se anotan solas, este módulo es para que registres los gastos (la plata que sacas de la caja para pagar cosas).</p>
+    <ul>
+      <li>En el formulario izquierdo, elige el <strong>Tipo de Gasto</strong> (Operativo = Luz/Gas, Inversión = Máquinas, Financiero = Impuestos).</li>
+      <li>Escribe de qué se trata en <strong>Concepto</strong> y el <strong>Monto</strong>.</li>
+      <li>Presiona <strong>"Registrar Movimiento"</strong>.</li>
+      <li>A la derecha verás tu <strong>Balance Diario</strong> (Ingresos Totales - Egresos Totales), que es exactamente los billetes que deberías tener en el cajón de la caja registradora.</li>
+    </ul>
+  </div>
+
+  <script>
+    let isEditing = false;
+    const editor = document.getElementById('editor');
+    const toggleBtn = document.getElementById('toggleEditBtn');
+
+    function toggleEdit() {
+      isEditing = !isEditing;
+      editor.contentEditable = isEditing;
+      if (isEditing) {
+        editor.classList.add('editing');
+        toggleBtn.innerText = '✅ Terminar Edición';
+        toggleBtn.style.background = '#22c55e';
+      } else {
+        editor.classList.remove('editing');
+        toggleBtn.innerText = '✏️ Activar Edición';
+        toggleBtn.style.background = '#b8860b';
+      }
+    }
+
+    function insertImage() {
+      if (!isEditing) {
+        alert("Primero presiona 'Activar Edición'");
+        return;
+      }
+      const url = prompt("Pega la URL o ruta de la imagen (ej: /inventarioprecios.png o http://...)");
+      if (url) {
+        document.execCommand('insertImage', false, url);
+      }
+    }
+
+    function saveHtml() {
+      // Remover clase editing antes de guardar
+      editor.contentEditable = false;
+      editor.classList.remove('editing');
+      toggleBtn.innerText = '✏️ Activar Edición';
+      toggleBtn.style.background = '#b8860b';
+      isEditing = false;
+
+      const htmlContent = document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'manual-usuario.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  </script>
+</body>
+</html>

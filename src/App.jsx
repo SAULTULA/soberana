@@ -8,17 +8,36 @@ import { Settings } from './features/settings/Settings';
 import { SalesHistory } from './features/sales/SalesHistory';
 import { Crm } from './features/crm/Crm';
 import { Auth } from './features/auth/Auth';
+import { CloudLogin } from './features/auth/CloudLogin';
 import { Manual } from './features/manual/Manual';
-import { DatabaseService } from './utils/database';
+import { DatabaseService, supabase } from './utils/database';
 import './styles/global.css';
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [currentUser, setCurrentUser] = useState(null);
   const [globalConfig, setGlobalConfig] = useState({ businessName: 'Mi Negocio', theme: 'default' });
+  const [cloudSession, setCloudSession] = useState('checking');
 
   useEffect(() => {
-    // Cargar configuraciones al iniciar la app
+    // 1. Verificar sesión Cloud (SaaS)
+    if (window.electronAPI) {
+      setCloudSession('bypassed'); // Desktop app: no pedimos login de Nube
+    } else {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setCloudSession(session ? session : null);
+      });
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setCloudSession(session ? session : null);
+      });
+
+      return () => subscription.unsubscribe();
+    }
+  }, []);
+
+  useEffect(() => {
+    // 2. Cargar configuraciones al iniciar la app
     const loadConfig = async () => {
       const settingsData = await DatabaseService.getRecords('settings');
       const nameSetting = settingsData.find(s => s.key === 'businessName');
@@ -29,12 +48,32 @@ function App() {
       
       setGlobalConfig({ businessName: bName, theme });
       
-      // Aplicar tema
       document.documentElement.setAttribute('data-theme', theme);
     };
-    loadConfig();
-  }, []);
+    if (cloudSession !== 'checking' && cloudSession !== null) {
+      loadConfig();
+    }
+  }, [cloudSession]);
 
+  const handleCloudLogin = async (session) => {
+    setCloudSession(session);
+    try {
+      await DatabaseService.fetchCloudRecords();
+    } catch (e) {
+      console.error('Error restaurando backup en la nube:', e);
+    }
+  };
+
+  if (cloudSession === 'checking') {
+    return <div style={{height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#111418', color: '#00e5ff'}}>Cargando Sistema...</div>;
+  }
+
+  // Si estamos en web y no hay sesión, obligamos a loguearse como Administrador de Nube
+  if (cloudSession === null) {
+    return <CloudLogin onSessionReady={handleCloudLogin} />;
+  }
+
+  // Una vez con la nube autenticada (o bypass), pedimos el PIN local (Auth original)
   if (!currentUser) {
     return <Auth onLogin={setCurrentUser} />;
   }

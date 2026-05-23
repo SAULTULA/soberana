@@ -24,6 +24,9 @@ export function CloudLogin({ onSessionReady }) {
         }
       } else {
         // Registrarse
+        if (!window.electronAPI) {
+          throw new Error('El registro de nuevos negocios no está permitido desde la versión web. Por favor use la aplicación de escritorio o la APK.');
+        }
         const { data, error: authError } = await supabase.auth.signUp({ email, password });
         if (authError) throw authError;
         
@@ -84,12 +87,14 @@ export function CloudLogin({ onSessionReady }) {
           </button>
         </form>
 
-        <div className={styles.cloudLogin__switch}>
-          {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
-          <button onClick={() => { setIsLogin(!isLogin); setError(''); }}>
-            {isLogin ? 'Regístrate aquí' : 'Inicia Sesión'}
-          </button>
-        </div>
+        {window.electronAPI && (
+          <div className={styles.cloudLogin__switch}>
+            {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}
+            <button onClick={() => { setIsLogin(!isLogin); setError(''); }}>
+              {isLogin ? 'Regístrate aquí' : 'Inicia Sesión'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

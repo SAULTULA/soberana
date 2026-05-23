@@ -16,7 +16,7 @@
     "appId": "com.saultula.soberana",
     "productName": "Soberana",
     "directories": {
-      "output": "dist-electron"
+      "output": "build-electron"
     },
     "win": {
       "target": [

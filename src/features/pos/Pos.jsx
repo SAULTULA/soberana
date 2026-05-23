@@ -95,7 +95,8 @@ export function Pos() {
   const handleEqual = () => {
     try {
       const sanitized = (equation + display).replace(/[^-()\d/*+.]/g, '');
-      setDisplay(String(eval(sanitized)));
+      const calculate = new Function('return ' + (sanitized || '0'));
+      setDisplay(String(calculate()));
       setEquation('');
     } catch (e) {
       setDisplay('Error');

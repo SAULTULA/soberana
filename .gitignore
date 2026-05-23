@@ -11,6 +11,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-electron
+build-electron
+android
 *.local
 
 # Editor

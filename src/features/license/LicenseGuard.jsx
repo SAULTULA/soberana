@@ -1,117 +1,163 @@
 import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
 
-// Conexión a la base de datos EXCLUSIVA de KSMLicencias
-const KSM_URL = 'https://jnscgzsmyfaqnlovxhdh.supabase.co';
-const KSM_KEY = 'sb_publishable_U6mWpXwGDIwGGGDvO7DoXA_aO1UiSKr';
-const ksmSupabase = createClient(KSM_URL, KSM_KEY);
+const SUPABASE_PROJECT_REF = 'jnscgzsmyfaqnlovxhdh';
+const SUPABASE_ANON_KEY = 'sb_publishable_U6mWpXwGDIwGGGDvO7DoXA_aO1UiSKr';
+const SUPABASE_EDGE_FUNCTION_URL = `https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/verify-license`;
+const APP_NAME = 'Soberana';
 
 export function LicenseGuard({ children }) {
-  const [status, setStatus] = useState('checking'); // checking, pending, approved
+  const [status, setStatus] = useState('checking'); // checking, not_registered, pending, expired, approved, error
   const [hwid, setHwid] = useState('');
+  const [message, setMessage] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Si estamos en web (Vercel), no pedimos HWID, dejamos pasar (o si prefieres bloquear, coméntalo)
+    // Si estamos en web (Vercel), no pedimos HWID, dejamos pasar
     if (!window.electronAPI) {
       setStatus('approved');
       return;
     }
 
-    const checkLicense = async () => {
+    const initCheck = async () => {
       try {
         const machineId = await window.electronAPI.getHWID();
         setHwid(machineId);
-
-        // 1. Buscar si el HWID ya está en la tabla de licencias
-        const { data, error } = await ksmSupabase
-          .from('licencias')
-          .select('*')
-          .eq('hwid', machineId)
-          .single();
-
-        if (error && error.code === 'PGRST116') {
-          // No existe: Lo insertamos para disparar el Webhook a Telegram
-          await ksmSupabase.from('licencias').insert([{ hwid: machineId, status: 'pendiente' }]);
-          setStatus('pending');
-          listenForApproval(machineId);
-        } else if (data) {
-          if (data.status === 'aprobado' || data.status === 'activo' || data.status === 'approved') {
-            setStatus('approved');
-          } else {
-            setStatus('pending');
-            listenForApproval(machineId);
-          }
-        }
+        checkWithServer(machineId);
       } catch (err) {
-        console.error('Error validando licencia:', err);
-        setStatus('pending'); // Fallback seguro: bloquear si hay error
+        console.error('Error obteniendo HWID:', err);
+        setStatus('error');
+        setMessage('No se pudo obtener el identificador del dispositivo.');
       }
     };
 
-    checkLicense();
+    initCheck();
   }, []);
 
-  const listenForApproval = (machineId) => {
-    // Escuchar cambios en tiempo real en la tabla licencias para este HWID
-    const channel = ksmSupabase
-      .channel('licencias-cambios')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'licencias', filter: `hwid=eq.${machineId}` },
-        (payload) => {
-          const newStatus = payload.new.status;
-          if (newStatus === 'aprobado' || newStatus === 'activo' || newStatus === 'approved') {
-            setStatus('approved');
-          }
-        }
-      )
-      .subscribe();
+  const checkWithServer = async (machineId, name = null) => {
+    try {
+      const payload = { hwid: machineId, app_name: APP_NAME };
+      if (name) payload.client_name = name;
 
-    return () => ksmSupabase.removeChannel(channel);
+      const response = await fetch(SUPABASE_EDGE_FUNCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+
+      if (data.authorized) {
+        setStatus('approved');
+      } else {
+        setStatus(data.status || 'error');
+        setMessage(data.message || 'Error desconocido.');
+      }
+    } catch (error) {
+      console.error("[KSM License] Error crítico:", error);
+      setStatus('error');
+      setMessage('No se pudo conectar con el servidor de licencias.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitName = () => {
+    if (clientName.trim().length > 0) {
+      setIsSubmitting(true);
+      checkWithServer(hwid, clientName);
+    }
   };
 
   if (status === 'checking') {
     return (
-      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#191b20', color: '#00e5ff' }}>
-        <h2>Verificando Seguridad...</h2>
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f1115', color: '#00e5ff', flexDirection: 'column' }}>
+        <h2>Verificando Licencia...</h2>
+        <p style={{ color: '#a1a5b0' }}>Iniciando conexión segura con KSM...</p>
       </div>
     );
   }
 
-  if (status === 'pending') {
+  if (status === 'not_registered') {
     return (
-      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#191b20' }}>
-        <div style={{ background: '#22252b', padding: '40px', borderRadius: '12px', textAlign: 'center', border: '1px solid #ef4444', maxWidth: '500px' }}>
-          <h2 style={{ color: '#ef4444', marginBottom: '20px' }}>EQUIPO NO AUTORIZADO</h2>
-          <p style={{ color: '#94a3b8', marginBottom: '20px' }}>
-            Este dispositivo ha sido registrado pero aún no tiene una licencia activa. Se ha enviado una notificación automática a Soporte.
-          </p>
-          <div style={{ background: '#191b20', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-            <span style={{ color: '#00e5ff', fontSize: '12px' }}>TU CÓDIGO DE HARDWARE (HWID):</span><br/>
-            <strong style={{ color: '#fff', fontSize: '18px', letterSpacing: '2px' }}>{hwid}</strong>
-          </div>
-          <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '25px' }}>
-            Por favor, comunícate con el Administrador y envíale este código. Esta pantalla se desbloqueará automáticamente apenas se apruebe.
-          </p>
-          
-          <a 
-            href="https://wa.me/1166508379?text=Hola,%20necesito%20autorizar%20mi%20equipo%20en%20Soberana.%20Mi%20HWID%20es:%20" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-block',
-              background: '#25D366',
-              color: '#ffffff',
-              padding: '10px 20px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: 'bold',
-              border: 'none',
-              cursor: 'pointer'
-            }}
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f1115' }}>
+        <div style={{ background: '#1a1d24', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
+          <h1 style={{ color: '#6366f1', margin: '0 0 10px 0' }}>Registro Requerido</h1>
+          <p style={{ color: '#a1a5b0', marginBottom: '25px' }}>Ingresa tu nombre para solicitar acceso a {APP_NAME}.</p>
+          <input 
+            type="text" 
+            placeholder="Tu Nombre o Empresa" 
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            style={{ width: '100%', padding: '12px', marginBottom: '15px', background: '#0f1115', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white', fontSize: '16px', outline: 'none' }} 
+          />
+          <button 
+            onClick={handleSubmitName}
+            disabled={isSubmitting || clientName.trim() === ''}
+            style={{ width: '100%', padding: '12px', background: isSubmitting ? '#4338ca' : '#6366f1', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '600', cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
           >
-            💬 Contactar a Soporte (WhatsApp)
-          </a>
+            {isSubmitting ? 'Enviando...' : 'Enviar Solicitud'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'pending' || status === 'blocked') {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f1115' }}>
+        <div style={{ background: '#1a1d24', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
+          <h1 style={{ color: '#f59e0b', margin: '0 0 10px 0' }}>Acceso Restringido</h1>
+          <p style={{ color: '#a1a5b0', marginBottom: '25px' }}>{message}</p>
+          <div style={{ padding: '15px', background: '#0f1115', borderRadius: '8px', marginBottom: '20px', fontFamily: 'monospace', color: '#fff' }}>
+            ID: {hwid}
+          </div>
+          <button 
+            onClick={() => checkWithServer(hwid)}
+            style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '16px', cursor: 'pointer' }}
+          >
+            Refrescar Estado
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'expired') {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f1115' }}>
+        <div style={{ background: '#1a1d24', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
+          <h1 style={{ color: '#ef4444', margin: '0 0 10px 0' }}>Licencia Expirada</h1>
+          <p style={{ color: '#a1a5b0', marginBottom: '25px' }}>{message}</p>
+          <button 
+            onClick={() => checkWithServer(hwid)}
+            style={{ width: '100%', padding: '12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            Renovar Suscripción
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#0f1115' }}>
+        <div style={{ background: '#1a1d24', padding: '40px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
+          <h1 style={{ color: '#ef4444', margin: '0 0 10px 0' }}>Error de Conexión</h1>
+          <p style={{ color: '#a1a5b0', marginBottom: '25px' }}>{message}</p>
+          <div style={{ padding: '15px', background: '#0f1115', borderRadius: '8px', fontFamily: 'monospace', fontSize: '12px', color: '#ef4444' }}>
+            {hwid}
+          </div>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ marginTop: '20px', color: '#6366f1', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     );

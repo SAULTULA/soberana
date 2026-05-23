@@ -32,3 +32,6 @@ recovery-codes*
 *licencias*.txt
 *secret*.txt
 keys/
+
+# Archivos de build generados
+build-final/

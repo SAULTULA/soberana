@@ -9,14 +9,14 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"wait-on tcp:5173 && electron .\"",
+    "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"npx wait-on tcp:5173 && electron .\"",
     "electron:build": "npm run build && electron-builder"
   },
   "build": {
     "appId": "com.saultula.soberana",
     "productName": "Soberana",
     "directories": {
-      "output": "build-electron"
+      "output": "build-final"
     },
     "win": {
       "target": [
@@ -31,6 +31,7 @@
     "@supabase/supabase-js": "^2.43.0",
     "crypto-js": "^4.2.0",
     "localforage": "^1.10.0",
+    "node-machine-id": "^1.1.12",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^2.12.7"
@@ -48,7 +49,6 @@
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
-    "node-machine-id": "^1.1.12",
     "terser": "^5.31.0",
     "vite": "^8.0.14"
   }

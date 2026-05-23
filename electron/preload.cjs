@@ -1,9 +1,9 @@
 const { contextBridge } = require('electron')
-const { machineIdSync } = require('node-machine-id')
 
 contextBridge.exposeInMainWorld('electronAPI', {
   getHWID: () => {
     try {
+      const { machineIdSync } = require('node-machine-id');
       return machineIdSync(true); // true = original machine ID, false = hash
     } catch (e) {
       // Fallback in case of error

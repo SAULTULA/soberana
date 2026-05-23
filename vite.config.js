@@ -11,5 +11,13 @@ export default defineConfig({
       compress: { drop_console: true },
       mangle: true
     }
+  },
+  optimizeDeps: {
+    exclude: ['@opentelemetry/api']
+  },
+  server: {
+    watch: {
+      ignored: ['**/android/**', '**/build-electron/**', '**/build-final/**']
+    }
   }
 })

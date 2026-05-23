@@ -7,17 +7,17 @@ export function Auth({ onLogin }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
   const [users, setUsers] = useState([]);
-
+  const [isSetupMode, setIsSetupMode] = useState(false);
+  const [confirmPin, setConfirmPin] = useState('');
+  const [step, setStep] = useState(1); // 1 = Enter/Create, 2 = Confirm
   useEffect(() => {
     const loadUsers = async () => {
       let dbUsers = await DatabaseService.getRecords('users');
       if (dbUsers.length === 0) {
-        // Create default admin
-        const defaultAdmin = { id: 'admin-1', name: 'Administrador', pin: '1234', role: 'ADMIN' };
-        await DatabaseService.saveRecord('users', defaultAdmin);
-        dbUsers = [defaultAdmin];
+        setIsSetupMode(true);
+      } else {
+        setUsers(dbUsers);
       }
-      setUsers(dbUsers);
     };
     loadUsers();
   }, []);
@@ -41,15 +41,39 @@ export function Auth({ onLogin }) {
 
   useEffect(() => {
     if (pin.length === 4) {
-      const userFound = users.find(u => u.pin === pin);
-      if (userFound) {
-        onLogin(userFound);
+      if (isSetupMode) {
+        if (step === 1) {
+          setConfirmPin(pin);
+          setPin('');
+          setStep(2);
+        } else if (step === 2) {
+          if (pin === confirmPin) {
+            const createAdmin = async () => {
+              const newAdmin = { id: 'admin-1', name: 'Administrador', pin: pin, role: 'ADMIN' };
+              await DatabaseService.saveRecord('users', newAdmin);
+              onLogin(newAdmin);
+            };
+            createAdmin();
+          } else {
+            setError(true);
+            setTimeout(() => {
+              setPin('');
+              setConfirmPin('');
+              setStep(1);
+            }, 800);
+          }
+        }
       } else {
-        setError(true);
-        setTimeout(() => setPin(''), 500); // clear after short delay
+        const userFound = users.find(u => u.pin === pin);
+        if (userFound) {
+          onLogin(userFound);
+        } else {
+          setError(true);
+          setTimeout(() => setPin(''), 500); // clear after short delay
+        }
       }
     }
-  }, [pin, users, onLogin]);
+  }, [pin, users, onLogin, isSetupMode, step, confirmPin]);
 
   // Generate 4 circles for PIN visual feedback
   const renderDots = () => {
@@ -71,13 +95,15 @@ export function Auth({ onLogin }) {
         <div className={styles.authHeader}>
           <img src="/soberana.png" alt="Soberana" className={styles.authLogo} />
           <h2 className="texto-dorado" style={{ margin: '15px 0 5px 0' }}>Soberana</h2>
-          <p className="texto-dorado-italic">Control de Acceso</p>
+          <p className="texto-dorado-italic">
+            {isSetupMode ? (step === 1 ? 'Crea tu PIN Maestro' : 'Confirma tu PIN Maestro') : 'Control de Acceso'}
+          </p>
         </div>
 
         <div className={styles.pinDisplay}>
           {renderDots()}
         </div>
-        {error && <p className={styles.errorMsg}>PIN Incorrecto</p>}
+        {error && <p className={styles.errorMsg}>{isSetupMode ? 'Los PINs no coinciden' : 'PIN Incorrecto'}</p>}
 
         <div className={styles.numpad}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
